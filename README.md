@@ -63,7 +63,7 @@ elif resp.exit_code == 1:
     # function arguments were malformed
     print(resp.response)
 elif resp.exit_code == 2:
-    # function has an exception
+    # function had an exception during execution
     print(resp.response)  # gives us the full traceback for easy debugging
 
 ```
