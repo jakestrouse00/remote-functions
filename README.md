@@ -60,7 +60,7 @@ if resp.exit_code == 0:
     # function executed successfully
     print(resp.response)  # 5
 elif resp.exit_code == 1:
-    # function arguments are malformed
+    # function arguments were malformed
     print(resp.response)
 elif resp.exit_code == 2:
     # function has an exception
