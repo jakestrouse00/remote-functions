@@ -156,4 +156,4 @@ def to_api(enforce_types: bool = False):
 
 
 def start(**kwargs):
-    uvicorn.run("apifunc:app", **kwargs)
+    uvicorn.run("tools:app", **kwargs)

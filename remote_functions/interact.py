@@ -70,7 +70,3 @@ class Executor:
 
         return response
 
-
-if __name__ == "__main__":
-    x = Executor("http://127.0.0.1:8000")
-    # x.execute("test", m="dude")
