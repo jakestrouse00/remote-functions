@@ -68,6 +68,26 @@ elif resp.exit_code == 2:
 
 ```
 
+## Run it
+First start the server with:
+<div class="termy">
+
+```console
+$ python server.py
+```
+
+</div>
+
+Then run client.py to test your remote function
+
+<div class="termy">
+
+```console
+$ python client.py
+```
+
+</div>
+
 
 ## License
 
