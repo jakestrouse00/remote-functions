@@ -1,5 +1,15 @@
 # remote-functions
 
+---
+Remote-functions provides type enforced remotely run Python functions. Using remote-functions,
+developers can run Python functions from any device with any programming language.
+
+
+### Key Features
+* **Fast**: Built on top of [FastAPI](https://github.com/tiangolo/fastapi).
+* **Easy**: Designed to be easy to use and learn.
+* **Type Checking**: Built-in type checking for function arguments.
+
 
 ## Requirements
 
@@ -25,7 +35,7 @@ $ pip install remote-functions
 from remote_functions.tools import to_api, start
 
 
-@to_api(enforce_types=False)
+@to_api(enforce_types=True)
 def add(a: int, b: int):
     return a + b
 
@@ -57,3 +67,8 @@ elif resp.exit_code == 2:
     print(resp.response)  # gives us the full traceback for easy debugging
 
 ```
+
+
+## License
+
+This project is licensed under the terms of the MIT license.
