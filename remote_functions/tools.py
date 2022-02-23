@@ -155,5 +155,5 @@ def to_api(enforce_types: bool = False):
     return to_api_inside
 
 
-def start(**kwargs):
-    uvicorn.run("remote_functions.tools:app", **kwargs)
+def start(host: str = "127.0.0.1", port: int = 8000, reload: bool = False, **kwargs):
+    uvicorn.run("remote_functions.tools:app", host=host, port=port, reload=reload, **kwargs)
