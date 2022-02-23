@@ -1,7 +1,7 @@
-from remote_functions.tools import to_api, start
+from remote_functions.tools import remote, start
 
 
-@to_api(enforce_types=False)
+@remote(enforce_types=False)
 def add(a: int, b: int):
     return a + b
 

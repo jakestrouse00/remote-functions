@@ -36,7 +36,7 @@ class _PostData(BaseModel):
     args: Optional[dict] = None
 
 
-def to_api(enforce_types: bool = False):
+def remote(enforce_types: bool = False):
     def to_api_inside(func):
         if func.__name__ not in all_paths:
             all_paths.append(func.__name__)

@@ -32,10 +32,10 @@ $ pip install remote-functions
 * Create a file `server.py` with:
 
 ```Python
-from remote_functions.tools import to_api, start
+from remote_functions.tools import remote, start
 
 
-@to_api(enforce_types=True)
+@remote(enforce_types=True)
 def add(a: int, b: int):
     return a + b
 
