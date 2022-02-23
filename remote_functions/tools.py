@@ -62,7 +62,7 @@ def to_api(enforce_types: bool = False):
                 return _Check(invalid=False)
             else:
                 joined = "     ".join(missing_args)
-                joined.replace("     ", " and ")
+                joined = joined.replace("     ", ", ")
                 return _Check(
                     invalid=True,
                     response={
