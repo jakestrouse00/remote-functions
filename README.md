@@ -78,7 +78,7 @@ To enable authentication change your `server.py` file to:
 <pre lang="python"><code>
 from remote_functions.tools import remote, start, Settings
 
-settings = Settings()
+<b>settings = Settings()</b>
 settings.authorization = "super_secret_key"
 
 
