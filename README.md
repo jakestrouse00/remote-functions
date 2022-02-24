@@ -68,6 +68,50 @@ elif resp.exit_code == 2:
 
 ```
 
+<details markdown="1">
+<summary><b>Add authentication</b></summary>
+
+If you want to protect your application from unauthorized access, 
+you can enable key based authentication.
+
+To enable authentication change your `server.py` file to:
+```Python
+from remote_functions.tools import remote, start, Settings
+
+settings = Settings()
+settings.authorization = "super_secret_key"
+
+
+@remote(enforce_types=True, settings=settings)
+def add(a: int, b: int):
+    return a + b
+
+
+if __name__ == '__main__':
+    start()
+```
+
+Then in `client.py` add the `authorization` argument
+```Python
+from remote_functions.interact import Executor
+
+api_url = "http://127.0.0.1:8000"
+ex = Executor(api_url, authorization="super_secret_key")
+
+resp = ex.execute("add", a=2, b=3)
+if resp.exit_code == 0:
+    # function executed successfully
+    print(resp.response)  # 5
+elif resp.exit_code == 1:
+    # function arguments were malformed
+    print(resp.response)
+elif resp.exit_code == 2:
+    # function had an exception during execution
+    print(resp.response)  # gives us the full traceback for easy debugging
+
+```
+</details>
+
 ## Run it
 First start the server with:
 <div class="termy">
@@ -111,3 +155,14 @@ if __name__ == '__main__':
 ## License
 
 This project is licensed under the terms of the MIT license.
+
+```diff
+public class Hello1
+{
+   public static void Main()
+   {
+-      System.Console.WriteLine("Hello, World!");
++      System.Console.WriteLine("Rock all night long!");
+   }
+}
+```
