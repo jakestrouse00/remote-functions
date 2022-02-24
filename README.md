@@ -32,7 +32,7 @@ $ pip install remote-functions
 * Create a file `server.py` with:
 
 ```Python
-from remote_functions.tools import remote, start
+from remote_functions import remote, start
 
 
 @remote(enforce_types=True)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 * Create a file `client.py` with:
 
 ```Python
-from remote_functions.interact import Executor
+from remote_functions import Executor
 
 api_url = "http://127.0.0.1:8000"
 ex = Executor(api_url)
@@ -76,7 +76,7 @@ you can enable key based authentication.
 
 To enable authentication change your `server.py` file to:
 ```Python
-from remote_functions.tools import remote, start, Settings
+from remote_functions import remote, start, Settings
 
 settings = Settings()
 settings.authorization = "super_secret_key"
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
 Then in `client.py` add the `authorization` argument
 ```Python
-from remote_functions.interact import Executor
+from remote_functions import Executor
 
 api_url = "http://127.0.0.1:8000"
 ex = Executor(api_url, authorization="super_secret_key")
@@ -139,7 +139,7 @@ To deploy your application for production you just have to slightly modify your 
 the `host` and `port`
 
 ```Python
-from remote_functions.tools import remote, start
+from remote_functions import remote, start
 
 
 @remote(enforce_types=True)
