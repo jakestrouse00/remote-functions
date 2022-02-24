@@ -75,7 +75,7 @@ If you want to protect your application from unauthorized access,
 you can enable key based authentication.
 
 To enable authentication change your `server.py` file to:
-```Python startline=3
+<pre lang="python"><code>
 from remote_functions.tools import remote, start, Settings
 
 settings = Settings()
@@ -89,7 +89,7 @@ def add(a: int, b: int):
 
 if __name__ == '__main__':
     start()
-```
+</code></pre>
 
 Then in `client.py` add the `authorization` argument
 ```Python
