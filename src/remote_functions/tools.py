@@ -202,4 +202,4 @@ def remote(enforce_types: bool = False, settings: Settings = None):
 
 
 def start(host: str = "127.0.0.1", port: int = 8000, reload: bool = False, **kwargs):
-    uvicorn.run("src.tools:app", host=host, port=port, reload=reload, **kwargs)
+    uvicorn.run("remote_functions.tools:app", host=host, port=port, reload=reload, **kwargs)
