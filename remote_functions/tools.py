@@ -18,7 +18,7 @@ internal status codes:
 """
 
 """todo:
-add ability to check if passed function is async. If it is async, use a fastapi path with async
+
 """
 
 app = FastAPI(docs_url=None, redoc_url=None)
@@ -99,7 +99,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
         holder = _AuthHolder(settings)
         function_is_async = inspect.iscoroutinefunction(func)
 
-        def _arguments_missing(data: _PostData) -> _Check:
+        async def _arguments_missing(data: _PostData) -> _Check:
             """
             check if all required arguments are present
             :param data: post data
@@ -124,7 +124,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
                     },
                 )
 
-        def _arguments_correct_type(data: _PostData) -> _Check:
+        async def _arguments_correct_type(data: _PostData) -> _Check:
             """
             checks if all arguments have the correct types
             :param data: post data
@@ -154,7 +154,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
             args = inspect.getfullargspec(func).args
             if len(args) > 0:
                 # arguments are required
-                arg_check = _arguments_missing(data)
+                arg_check = await _arguments_missing(data)
                 if arg_check.invalid:
                     # there are arguments missing
                     response.status_code = status.HTTP_400_BAD_REQUEST
@@ -164,7 +164,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
                     pass
 
                 if enforce_types:
-                    type_check = _arguments_correct_type(data)
+                    type_check = await _arguments_correct_type(data)
                     if type_check.invalid:
                         # arguments have wrong types
                         response.status_code = status.HTTP_400_BAD_REQUEST
