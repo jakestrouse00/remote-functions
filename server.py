@@ -1,4 +1,4 @@
-from remote_functions.tools import remote, start, Settings
+from src.tools import remote, start, Settings
 
 
 @remote(enforce_types=True)
