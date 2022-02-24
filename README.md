@@ -75,14 +75,14 @@ If you want to protect your application from unauthorized access,
 you can enable key based authentication.
 
 To enable authentication change your `server.py` file to:
-```Python
-from remote_functions.tools import remote, start, Settings
+```diff
++ from remote_functions.tools import remote, start, Settings
 
-settings = Settings()
-settings.authorization = "super_secret_key"
++ settings = Settings()
++ settings.authorization = "super_secret_key"
 
 
-@remote(enforce_types=True, settings=settings)
++ @remote(enforce_types=True, settings=settings)
 def add(a: int, b: int):
     return a + b
 
