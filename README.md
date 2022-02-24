@@ -91,7 +91,8 @@ $ python client.py
 <details markdown="1">
 <summary><b>Deploy in production</b></summary>
 
-To deploy your application for production you just have to slightly modify your server.py file
+To deploy your application for production you just have to slightly modify your server.py file by changing 
+the `host` and `port`
 
 ```Python
 from remote_functions.tools import remote, start
