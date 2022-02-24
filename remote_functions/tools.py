@@ -83,7 +83,7 @@ class _PostData(BaseModel):
 
 
 def remote(enforce_types: bool = False, settings: Settings = None):
-    def to_api_inside(func):
+    def remote_inside(func):
         if func.__name__ not in all_paths:
             all_paths.append(func.__name__)
         else:
@@ -200,7 +200,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
 
         return wrap
 
-    return to_api_inside
+    return remote_inside
 
 
 def start(host: str = "127.0.0.1", port: int = 8000, reload: bool = False, **kwargs):
