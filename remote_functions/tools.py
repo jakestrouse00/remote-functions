@@ -152,24 +152,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
         @app.post(f"/functions/{func.__name__}", dependencies=[Depends(holder._check_authorization)])
         async def wrap(data: _PostData, response: Response):
             args = inspect.getfullargspec(func).args
-            if len(args) == 0:
-                # no arguments for the function
-                try:
-                    if function_is_async:
-                        result = await func()
-                    else:
-                        result = func()
-                except:
-                    error_info = traceback.format_exc()
-                    encoded_error = base64.b64encode(
-                        error_info.encode("ascii")
-                    ).decode()
-                    response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-                    return {
-                        "status": 2,
-                        "exception": encoded_error,
-                    }
-            else:
+            if len(args) > 0:
                 # arguments are required
                 arg_check = _arguments_missing(data)
                 if arg_check.invalid:
@@ -189,21 +172,25 @@ def remote(enforce_types: bool = False, settings: Settings = None):
                     else:
                         # all arguments have correct types
                         pass
-                try:
-                    if function_is_async:
-                        result = await func(**data.args)
-                    else:
-                        result = func(**data.args)
-                except:
-                    error_info = traceback.format_exc()
-                    encoded_error = base64.b64encode(
-                        error_info.encode("ascii")
-                    ).decode()
-                    response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-                    return {
-                        "status": 2,
-                        "exception": encoded_error,
-                    }
+            try:
+                if data.args is None:
+                    func_args = {}
+                else:
+                    func_args = data.args
+                if function_is_async:
+                    result = await func(**func_args)
+                else:
+                    result = func(**func_args)
+            except:
+                error_info = traceback.format_exc()
+                encoded_error = base64.b64encode(
+                    error_info.encode("ascii")
+                ).decode()
+                response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                return {
+                    "status": 2,
+                    "exception": encoded_error,
+                }
 
             pickled_result = codecs.encode(pickle.dumps(result), "base64").decode()
             response.status_code = status.HTTP_200_OK
