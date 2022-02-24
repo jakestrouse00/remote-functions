@@ -88,6 +88,24 @@ $ python client.py
 
 </div>
 
+<details markdown="1">
+<summary><b>Deploy in production</b></summary>
+
+To deploy your application for production you just have to slightly modify your server.py file
+
+```Python
+from remote_functions.tools import remote, start
+
+
+@remote(enforce_types=True)
+def add(a: int, b: int):
+    return a + b
+
+
+if __name__ == '__main__':
+    start(host="0.0.0.0", port=80)
+```
+</details>
 
 ## License
 
