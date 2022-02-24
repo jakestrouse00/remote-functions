@@ -75,10 +75,10 @@ If you want to protect your application from unauthorized access,
 you can enable key based authentication.
 
 To enable authentication change your `server.py` file to:
-<pre lang="python"><code>
+```Python
 from remote_functions.tools import remote, start, Settings
 
-<font color="#FF0000">settings = Settings()</font>
+settings = Settings()
 settings.authorization = "super_secret_key"
 
 
@@ -89,7 +89,7 @@ def add(a: int, b: int):
 
 if __name__ == '__main__':
     start()
-</code></pre>
+```
 
 Then in `client.py` add the `authorization` argument
 ```Python
@@ -155,14 +155,3 @@ if __name__ == '__main__':
 ## License
 
 This project is licensed under the terms of the MIT license.
-
-```diff
-public class Hello1
-{
-   public static void Main()
-   {
--      System.Console.WriteLine("Hello, World!");
-+      System.Console.WriteLine("Rock all night long!");
-   }
-}
-```
