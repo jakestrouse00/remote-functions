@@ -1,7 +1,7 @@
 from remote_functions.interact import Executor
 
 api_url = "http://127.0.0.1:8000"
-ex = Executor(api_url, authorization="super_secret_key")
+ex = Executor(api_url)
 
 resp = ex.execute("add", a=2, b=3)
 print(resp)

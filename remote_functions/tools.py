@@ -11,15 +11,19 @@ import base64
 import pickle
 
 """
-internal status code notes:
+internal status codes:
 0 = successful execution
 1 = failed execution (example: missing arguments for the function)
 2 = exception raised by the function being executed. This will be accompanied by the full traceback
 """
 
+"""todo:
+add ability to check if passed function is async. If it is async, use a fastapi path with async
+"""
+
 app = FastAPI(docs_url=None, redoc_url=None)
 
-all_paths = []
+registered_functions = []
 
 
 class HTTPException(StarletteHTTPException):
@@ -44,7 +48,7 @@ class HTTPException(StarletteHTTPException):
 
 @app.get("/functions")
 def get_functions():
-    return all_paths
+    return registered_functions
 
 
 @dataclass
@@ -57,7 +61,7 @@ class _AuthHolder:
         self.settings = settings
 
     def _check_authorization(self, request: Request):
-        if self.settings.authorization is None:
+        if self.settings is None or self.settings.authorization is None:
             return True
         if not request.headers.get("authorization") == self.settings.authorization:
             error_msg = "Forbidden."
@@ -84,8 +88,8 @@ class _PostData(BaseModel):
 
 def remote(enforce_types: bool = False, settings: Settings = None):
     def remote_inside(func):
-        if func.__name__ not in all_paths:
-            all_paths.append(func.__name__)
+        if func.__name__ not in registered_functions:
+            registered_functions.append(func.__name__)
         else:
             # function is already defined
             raise Exception(
@@ -93,6 +97,7 @@ def remote(enforce_types: bool = False, settings: Settings = None):
             )
 
         holder = _AuthHolder(settings)
+        function_is_async = inspect.iscoroutinefunction(func)
 
         def _arguments_missing(data: _PostData) -> _Check:
             """
@@ -145,12 +150,15 @@ def remote(enforce_types: bool = False, settings: Settings = None):
                 )
 
         @app.post(f"/functions/{func.__name__}", dependencies=[Depends(holder._check_authorization)])
-        def wrap(data: _PostData, response: Response):
+        async def wrap(data: _PostData, response: Response):
             args = inspect.getfullargspec(func).args
             if len(args) == 0:
                 # no arguments for the function
                 try:
-                    result = func()
+                    if function_is_async:
+                        result = await func()
+                    else:
+                        result = func()
                 except:
                     error_info = traceback.format_exc()
                     encoded_error = base64.b64encode(
@@ -182,7 +190,10 @@ def remote(enforce_types: bool = False, settings: Settings = None):
                         # all arguments have correct types
                         pass
                 try:
-                    result = func(**data.args)
+                    if function_is_async:
+                        result = await func(**data.args)
+                    else:
+                        result = func(**data.args)
                 except:
                     error_info = traceback.format_exc()
                     encoded_error = base64.b64encode(
