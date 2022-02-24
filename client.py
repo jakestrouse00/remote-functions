@@ -1,4 +1,4 @@
-from src.interact import Executor
+from remote_functions import Executor
 
 api_url = "http://127.0.0.1:8000"
 ex = Executor(api_url)
