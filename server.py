@@ -1,7 +1,10 @@
-from remote_functions.tools import remote, start
+from remote_functions.tools import remote, start, Settings
+
+settings = Settings()
+settings.authorization = "super_secret_key"
 
 
-@remote(enforce_types=True)
+@remote(enforce_types=True, settings=settings)
 def add(a: int, b: int):
     return a + b
 

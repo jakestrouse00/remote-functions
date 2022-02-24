@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Response, status, Request, Depends
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from dataclasses import dataclass
-from typing import Optional, Tuple, get_type_hints
+from typing import Optional, Tuple, get_type_hints, List, Dict, Any
 from pydantic import BaseModel
 import uvicorn
 import codecs
@@ -21,9 +22,54 @@ app = FastAPI(docs_url=None, redoc_url=None)
 all_paths = []
 
 
+class HTTPException(StarletteHTTPException):
+    def __init__(
+            self,
+            status_code: int,
+            error_code: int,
+            detail: Any = None,
+            fields: List[Dict] = None,
+    ) -> None:
+        """
+        Generic HTTP Exception with support for custom status & error codes.
+        :param status_code: HTTP status code of the response
+        :param error_code: Custom error code, unique throughout the app
+        :param detail: detailed message of the error
+        :param fields: list of dicts with key as field and value as message
+        """
+        super().__init__(status_code=status_code, detail=detail)
+        self.error_code = error_code
+        self.fields = fields or []
+
+
 @app.get("/functions")
 def get_functions():
     return all_paths
+
+
+@dataclass
+class Settings:
+    authorization: str = None
+
+
+class _AuthHolder:
+    def __init__(self, settings: Settings):
+        self.settings = settings
+
+    def _check_authorization(self, request: Request):
+        if self.settings.authorization is None:
+            return True
+        if not request.headers.get("authorization") == self.settings.authorization:
+            error_msg = "Forbidden."
+            status_code = status.HTTP_403_FORBIDDEN
+            error_code = status.HTTP_403_FORBIDDEN
+            raise HTTPException(
+                status_code=status_code,
+                detail=error_msg,
+                error_code=error_code
+            )
+        else:
+            return True
 
 
 @dataclass
@@ -36,7 +82,7 @@ class _PostData(BaseModel):
     args: Optional[dict] = None
 
 
-def remote(enforce_types: bool = False):
+def remote(enforce_types: bool = False, settings: Settings = None):
     def to_api_inside(func):
         if func.__name__ not in all_paths:
             all_paths.append(func.__name__)
@@ -45,6 +91,8 @@ def remote(enforce_types: bool = False):
             raise Exception(
                 f"A function with the name {func.__name__} has already been defined"
             )
+
+        holder = _AuthHolder(settings)
 
         def _arguments_missing(data: _PostData) -> _Check:
             """
@@ -96,7 +144,7 @@ def remote(enforce_types: bool = False):
                     },
                 )
 
-        @app.post(f"/functions/{func.__name__}")
+        @app.post(f"/functions/{func.__name__}", dependencies=[Depends(holder._check_authorization)])
         def wrap(data: _PostData, response: Response):
             args = inspect.getfullargspec(func).args
             if len(args) == 0:
