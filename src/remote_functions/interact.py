@@ -31,7 +31,6 @@ class Executor:
     def execute(self, function_name: str, **kwargs) -> Response:
         """
         execute a remote function
-        :param class_name: parent class name
         :param function_name: name of the function to be executed
         :param kwargs:
         :return Response: response object
@@ -49,7 +48,7 @@ class Executor:
         print(f"{self.api_address}/function/{class_name}/{func_name}")
         if function_name not in _get_functions(self.api_address):
             raise Exception(f"{function_name} is not a registered remote function")
-        payload = {"args": kwargs, "class_name": class_name}
+        payload = {"args": kwargs}
         headers = {"Authorization": self.authorization}
         r = requests.post(
             f"{self.api_address}/function/{class_name}/{func_name}",
@@ -85,6 +84,11 @@ class Executor:
             )
         elif r.status_code == 403:
             # execution was forbidden (usually because the authorization was invalid)
+            response = Response(
+                status_code=r.status_code, exit_code=1, response=r.json()
+            )
+        elif r.status_code == 404:
+            # api path was not found. Something most likely went wrong during registering the api path
             response = Response(
                 status_code=r.status_code, exit_code=1, response=r.json()
             )
