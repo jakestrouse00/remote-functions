@@ -1,2 +1,2 @@
 from .interact import Executor
-from .tools import remote, start, Settings
+from .tools import remote, start, Settings, function_manager

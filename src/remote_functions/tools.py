@@ -1,14 +1,23 @@
-from fastapi import FastAPI, Response, status, Request, Depends
+from fastapi import FastAPI, Response, status, Request, Depends, APIRouter
+from fastapi_utils.cbv import cbv
+from fastapi_utils.inferring_router import InferringRouter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from dataclasses import dataclass
 from typing import Optional, Tuple, get_type_hints, List, Dict, Any
 from pydantic import BaseModel
 import uvicorn
 import codecs
+from functools import wraps
 import traceback
+import sys
 import inspect
 import base64
 import pickle
+import copy
+
+from functools import partial
+
+registered_functions = []
 
 """
 internal status codes:
@@ -18,12 +27,11 @@ internal status codes:
 """
 
 """todo:
-
+Make decorator be able to be used on a class and then create function paths for each function in the class
 """
 
 app = FastAPI(docs_url=None, redoc_url=None)
-
-registered_functions = []
+router = APIRouter()
 
 
 class HTTPException(StarletteHTTPException):
@@ -48,7 +56,7 @@ class HTTPException(StarletteHTTPException):
 
 @app.get("/functions")
 def get_functions():
-    return registered_functions
+    return function_manager.list_functions()
 
 
 @dataclass
@@ -82,124 +90,207 @@ class _Check:
     response: dict = None
 
 
+@dataclass
+class Function:
+    callback_function: Any
+    parent_class_name: str
+
+    def __post_init__(self):
+        self.parent_class_name = self.parent_class_name.lower()
+        self.function_path = f"{self.parent_class_name.lower()}/{self.callback_function.__name__.lower()}"
+
+    def __eq__(self, other):
+        return other == self.function_path
+
+    def __hash__(self):
+        return hash(self.function_path)
+
+
+class Functions:
+    def __init__(self):
+        self.functions: List[Function] = []
+
+    def register_function(self, callback_function: object, enforce_types: bool = False, settings: Settings = None) -> Function:
+        """
+        registers a function
+        :param settings:
+        :param enforce_types:
+        :param callback_function:
+        :return:
+        True if function has been registered
+        False if function already exists
+        """
+        if len(str(callback_function.__qualname__).split(".")) == 1:
+            # function is not located inside an object
+            parent_class_name = "main"
+        else:
+            # function is part of an object
+            parent_class_name = str(callback_function.__qualname__).split(".")[0]
+        func = Function(callback_function, parent_class_name)
+        if func not in self.functions:
+            self.functions.append(func)
+            register_api_path(func, enforce_types=enforce_types, settings=settings)
+            return func
+
+    def register_multiple_function(self, input_object: object, enforce_types: bool = False, settings: Settings = None) -> List[Function]:
+        results = []
+        for name, function_exec in inspect.getmembers(input_object,
+                                                      lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
+            if name != "__init__":
+                function_obj = Function(function_exec, input_object.__class__.__name__)
+                if function_obj not in self.functions:
+                    self.functions.append(function_obj)
+                    register_api_path(function_obj, enforce_types=enforce_types, settings=settings)
+                    results.append(function_obj)
+        return results
+
+    def find_function(self, function_path: str) -> Function:
+        filtered_functions = list((filter(lambda x: x == function_path, self.functions)))
+        if len(filtered_functions) != 0:
+            return filtered_functions[0]
+
+    def list_functions(self):
+        all_functions = list(map(lambda x: x.function_path, self.functions))
+        return all_functions
+
+
+function_manager = Functions()
+
+
 class _PostData(BaseModel):
     args: Optional[dict] = None
 
 
-def remote(enforce_types: bool = False, settings: Settings = None):
-    def remote_inside(func):
-        if func.__name__ not in registered_functions:
-            registered_functions.append(func.__name__)
-        else:
-            # function is already defined
-            raise Exception(
-                f"A function with the name {func.__name__} has already been defined"
-            )
+async def _arguments_missing(data: _PostData, stored_function_callback) -> _Check:
+    """
+    check if all required arguments are present
+    :param data: post data
+    :return _Check object:
+    _Check.invalid == True if arguments have incorrect types
+    """
+    # I can just call registered_function.callback_function directly, but it may cause issues
+    # may want to use function_manager.find() with the path if there are issues
+    args = inspect.getfullargspec(stored_function_callback).args
+    missing_args = []
+    for arg in args:
+        if arg not in data.args.keys():
+            missing_args.append(f"'{arg}'")
+    if len(missing_args) == 0:
+        return _Check(invalid=False)
+    else:
+        joined = "     ".join(missing_args)
+        joined = joined.replace("     ", ", ")
+        return _Check(
+            invalid=True,
+            response={
+                "status": 1,
+                "exception": f"TypeError: {stored_function_callback.__name__}() missing {len(missing_args)} required positional arguments: {joined}",
+            },
+        )
 
-        holder = _AuthHolder(settings)
-        function_is_async = inspect.iscoroutinefunction(func)
 
-        async def _arguments_missing(data: _PostData) -> _Check:
-            """
-            check if all required arguments are present
-            :param data: post data
-            :return _Check object:
-            _Check.invalid == True if arguments have incorrect types
-            """
-            args = inspect.getfullargspec(func).args
-            missing_args = []
-            for arg in args:
-                if arg not in data.args.keys():
-                    missing_args.append(f"'{arg}'")
-            if len(missing_args) == 0:
-                return _Check(invalid=False)
+async def _arguments_correct_type(data: _PostData, stored_function_callback) -> _Check:
+    """
+    checks if all arguments have the correct types
+    :param data: post data
+    :return _Check object:
+    _Check.invalid == True if arguments have incorrect types
+    """
+    args = data.args
+    hints = get_type_hints(stored_function_callback)
+    incorrect_types = []
+    for arg in args.keys():
+        if type(data.args[arg]) != hints[arg]:
+            incorrect_types.append(f"'{arg}' requires {hints[arg]}")
+    if len(incorrect_types) == 0:
+        return _Check(invalid=False)
+    else:
+        joined = ", ".join(incorrect_types)
+        return _Check(
+            invalid=True,
+            response={
+                "status": 1,
+                "exception": f"TypeError: {stored_function_callback.__name__}() incorrect types: {joined}",
+            },
+        )
+
+
+def register_api_path(function: Function, enforce_types: bool, settings: Settings = None):
+    print(f"register_api_path: {function.function_path}")
+    func_path = function.function_path
+
+    holder = _AuthHolder(settings)
+    function_is_async = inspect.iscoroutinefunction(function.callback_function)
+
+    @app.post(f"/function/{func_path}", dependencies=[Depends(holder._check_authorization)])
+    async def wrap(data: _PostData, response: Response, request: Request):
+        function_path = "/".join(request.url.path.split("/")[2:])
+        stored_function = function_manager.find_function(function_path)
+        stored_function_callback = stored_function.callback_function
+        args = inspect.getfullargspec(stored_function_callback).args
+        if len(args) > 0:
+            # arguments are required
+            arg_check = await _arguments_missing(data, stored_function_callback)
+            if arg_check.invalid:
+                # there are arguments missing
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return arg_check.response
             else:
-                joined = "     ".join(missing_args)
-                joined = joined.replace("     ", ", ")
-                return _Check(
-                    invalid=True,
-                    response={
-                        "status": 1,
-                        "exception": f"TypeError: {func.__name__}() missing {len(missing_args)} required positional arguments: {joined}",
-                    },
-                )
+                # no arguments missing
+                pass
 
-        async def _arguments_correct_type(data: _PostData) -> _Check:
-            """
-            checks if all arguments have the correct types
-            :param data: post data
-            :return _Check object:
-            _Check.invalid == True if arguments have incorrect types
-            """
-            args = data.args
-            hints = get_type_hints(func)
-            incorrect_types = []
-            for arg in args.keys():
-                if type(data.args[arg]) != hints[arg]:
-                    incorrect_types.append(f"'{arg}' requires {hints[arg]}")
-            if len(incorrect_types) == 0:
-                return _Check(invalid=False)
-            else:
-                joined = ", ".join(incorrect_types)
-                return _Check(
-                    invalid=True,
-                    response={
-                        "status": 1,
-                        "exception": f"TypeError: {func.__name__}() incorrect types: {joined}",
-                    },
-                )
-
-        @app.post(f"/functions/{func.__name__}", dependencies=[Depends(holder._check_authorization)])
-        async def wrap(data: _PostData, response: Response):
-            args = inspect.getfullargspec(func).args
-            if len(args) > 0:
-                # arguments are required
-                arg_check = await _arguments_missing(data)
-                if arg_check.invalid:
-                    # there are arguments missing
+            if enforce_types:
+                type_check = await _arguments_correct_type(data, stored_function_callback)
+                if type_check.invalid:
+                    # arguments have wrong types
                     response.status_code = status.HTTP_400_BAD_REQUEST
-                    return arg_check.response
+                    return type_check.response
                 else:
-                    # no arguments missing
+                    # all arguments have correct types
                     pass
+        try:
+            if data.args is None:
+                func_args = {}
+            else:
+                func_args = data.args
+            if function_is_async:
+                result = await stored_function_callback(**func_args)
+            else:
+                result = stored_function_callback(**func_args)
+        except:
+            error_info = traceback.format_exc()
+            encoded_error = base64.b64encode(
+                error_info.encode("ascii")
+            ).decode()
+            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            return {
+                "status": 2,
+                "exception": encoded_error,
+            }
 
-                if enforce_types:
-                    type_check = await _arguments_correct_type(data)
-                    if type_check.invalid:
-                        # arguments have wrong types
-                        response.status_code = status.HTTP_400_BAD_REQUEST
-                        return type_check.response
-                    else:
-                        # all arguments have correct types
-                        pass
-            try:
-                if data.args is None:
-                    func_args = {}
-                else:
-                    func_args = data.args
-                if function_is_async:
-                    result = await func(**func_args)
-                else:
-                    result = func(**func_args)
-            except:
-                error_info = traceback.format_exc()
-                encoded_error = base64.b64encode(
-                    error_info.encode("ascii")
-                ).decode()
-                response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-                return {
-                    "status": 2,
-                    "exception": encoded_error,
-                }
+        pickled_result = codecs.encode(pickle.dumps(result), "base64").decode()
+        response.status_code = status.HTTP_200_OK
+        return {"status": 0, "result": pickled_result}
 
-            pickled_result = codecs.encode(pickle.dumps(result), "base64").decode()
-            response.status_code = status.HTTP_200_OK
-            return {"status": 0, "result": pickled_result}
+    return wrap
 
-        return wrap
+
+def remote(enforce_types: bool = False, settings: Settings = None):
+    print("decorator initialized")
+
+    def remote_inside(func):
+        registered_function = function_manager.register_function(func)
+        if registered_function is None:
+            raise Exception(
+                f"A function with that name has already been defined"
+            )
+        register_api_path(registered_function, enforce_types=enforce_types, settings=settings)
 
     return remote_inside
 
 
-def start(host: str = "127.0.0.1", port: int = 8000, reload: bool = False, **kwargs):
-    uvicorn.run("remote_functions.tools:app", host=host, port=port, reload=reload, **kwargs)
+def start(host: str = "127.0.0.1", port: int = 8000, reload: bool = False, __dev: bool = False, **kwargs):
+    if not __dev:
+        uvicorn.run("remote_functions.tools:app", host=host, port=port, reload=reload, **kwargs)
+    else:
+        uvicorn.run("src.remote_functions.tools:app", host=host, port=port, reload=reload, **kwargs)

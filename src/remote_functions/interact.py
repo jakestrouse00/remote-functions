@@ -31,17 +31,31 @@ class Executor:
     def execute(self, function_name: str, **kwargs) -> Response:
         """
         execute a remote function
+        :param class_name: parent class name
         :param function_name: name of the function to be executed
         :param kwargs:
         :return Response: response object
         """
+        if "/" in function_name:
+            # executing function from a class
+            splited_function_name = function_name.split("/")
+            if len(splited_function_name) != 2:
+                raise Exception("function_name only supports two methods")
+            class_name = splited_function_name[0]
+            func_name = splited_function_name[1]
+        else:
+            class_name = "main"
+            func_name = function_name
+        print(f"{self.api_address}/function/{class_name}/{func_name}")
         if function_name not in _get_functions(self.api_address):
             raise Exception(f"{function_name} is not a registered remote function")
-        payload = {"args": kwargs}
-        headers = {
-            "Authorization": self.authorization
-        }
-        r = requests.post(f"{self.api_address}/functions/{function_name}", json=payload, headers=headers)
+        payload = {"args": kwargs, "class_name": class_name}
+        headers = {"Authorization": self.authorization}
+        r = requests.post(
+            f"{self.api_address}/function/{class_name}/{func_name}",
+            json=payload,
+            headers=headers,
+        )
 
         if r.status_code == 400:
             # there was a forced exception
@@ -71,9 +85,10 @@ class Executor:
             )
         elif r.status_code == 403:
             # execution was forbidden (usually because the authorization was invalid)
-            response = Response(status_code=r.status_code, exit_code=1, response=r.json())
+            response = Response(
+                status_code=r.status_code, exit_code=1, response=r.json()
+            )
         else:
             raise Exception(f"Unknown status code: {r.status_code} ")
 
         return response
-
