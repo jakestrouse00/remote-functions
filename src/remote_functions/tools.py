@@ -1,22 +1,15 @@
 from fastapi import FastAPI, Response, status, Request, Depends, APIRouter
-from fastapi_utils.cbv import cbv
 import warnings
-from fastapi_utils.inferring_router import InferringRouter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from dataclasses import dataclass
 from typing import Optional, Tuple, get_type_hints, List, Dict, Any
 from pydantic import BaseModel
 import uvicorn
 import codecs
-from functools import wraps
 import traceback
-import sys
 import inspect
 import base64
 import pickle
-import copy
-
-from functools import partial
 
 registered_functions = []
 
