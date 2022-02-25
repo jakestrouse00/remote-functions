@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Response, status, Request, Depends, APIRouter
 from fastapi_utils.cbv import cbv
+import warnings
 from fastapi_utils.inferring_router import InferringRouter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from dataclasses import dataclass
@@ -131,8 +132,10 @@ class Functions:
             self.functions.append(func)
             register_api_path(func, enforce_types=enforce_types, settings=settings)
             return func
+        else:
+            warnings.warn(f"Function is already registered: {func.function_path}")
 
-    def register_multiple_function(self, input_object: object, enforce_types: bool = False, settings: Settings = None) -> List[Function]:
+    def register_multiple_functions(self, input_object: object, enforce_types: bool = False, settings: Settings = None) -> List[Function]:
         results = []
         for name, function_exec in inspect.getmembers(input_object,
                                                       lambda x: inspect.isfunction(x) or inspect.ismethod(x)):
@@ -142,6 +145,8 @@ class Functions:
                     self.functions.append(function_obj)
                     register_api_path(function_obj, enforce_types=enforce_types, settings=settings)
                     results.append(function_obj)
+                else:
+                    warnings.warn(f"Function is already registered: {function_obj.function_path}")
         return results
 
     def find_function(self, function_path: str) -> Function:
@@ -216,7 +221,7 @@ async def _arguments_correct_type(data: _PostData, stored_function_callback) -> 
 
 
 def register_api_path(function: Function, enforce_types: bool, settings: Settings = None):
-    print(f"register_api_path: {function.function_path}")
+    print(f"registered_api_path: {function.function_path}")
     func_path = function.function_path
 
     holder = _AuthHolder(settings)
@@ -276,15 +281,9 @@ def register_api_path(function: Function, enforce_types: bool, settings: Setting
 
 
 def remote(enforce_types: bool = False, settings: Settings = None):
-    print("decorator initialized")
-
     def remote_inside(func):
-        registered_function = function_manager.register_function(func)
-        if registered_function is None:
-            raise Exception(
-                f"A function with that name has already been defined"
-            )
-        register_api_path(registered_function, enforce_types=enforce_types, settings=settings)
+        # automatically registers the api path
+        registered_function = function_manager.register_function(func, enforce_types=enforce_types, settings=settings)
 
     return remote_inside
 
