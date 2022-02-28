@@ -55,7 +55,11 @@ from remote_functions import Executor
 api_url = "http://127.0.0.1:8000"
 ex = Executor(api_url)
 
-resp = ex.execute("add", a=2, b=3)
+# calling a function requires two parts seperated by a slash. The class name comes
+# first (if the function is not apart of a class, it's class name is "main"). All
+# function callback names are lowercase. The callback name shown below tells us
+# we are trying to execute the function add() that is not inside of a class. 
+resp = ex.execute("main/add", a=2, b=3)
 if resp.exit_code == 0:
     # function executed successfully
     print(resp.response)  # 5
