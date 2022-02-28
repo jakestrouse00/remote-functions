@@ -11,7 +11,6 @@ import inspect
 import base64
 import pickle
 
-registered_functions = []
 
 """
 internal status codes:

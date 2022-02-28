@@ -3,7 +3,7 @@ from remote_functions import Executor
 api_url = "http://127.0.0.1:8000"
 ex = Executor(api_url, authorization="super_secret_key")
 
-resp = ex.execute("add", a=2, b=3)
+resp = ex.execute("main/add", a=2, b=3)
 print(resp)
 if resp.exit_code == 0:
     # function executed successfully

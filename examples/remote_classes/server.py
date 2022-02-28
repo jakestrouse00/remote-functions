@@ -1,4 +1,8 @@
-from remote_functions import remote, start, functions_manager
+from remote_functions import start, function_manager
+
+"""
+this feature may still be broken. More testing is needed.
+"""
 
 
 class SampleRemoteClass:
@@ -13,10 +17,11 @@ class SampleRemoteClass:
 # first we have to initialize the class
 initialized_class = SampleRemoteClass()
 # now we manually register the entire class
-functions_manager.register_multiple_functions(initialized_class, enforce_types=False)
+function_manager.register_multiple_functions(initialized_class, enforce_types=False)
 # you can also register each function in the class individually. In case you want to do something like only enforcing type hints on some functions
 # to register a single function you would do:
-functions_manager.register_function(initialized_class.increase, enforce_types=True)
+
+# function_manager.register_function(initialized_class.increase, enforce_types=True)
 
 
 if __name__ == '__main__':
